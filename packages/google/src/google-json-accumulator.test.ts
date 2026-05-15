@@ -192,6 +192,43 @@ describe('GoogleJSONAccumulator', () => {
       `);
     });
 
+    it('should reject __proto__ path segments to prevent prototype pollution', () => {
+      const accumulator = new GoogleJSONAccumulator();
+      accumulator.processPartialArgs([
+        { jsonPath: '$.__proto__.polluted', boolValue: true },
+      ]);
+
+      expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+
+      const final = accumulator.finalize();
+      expect(final).toMatchInlineSnapshot(`
+        {
+          "closingDelta": "{}",
+          "finalJSON": "{}",
+        }
+      `);
+    });
+
+    it('should reject constructor.prototype path segments to prevent prototype pollution', () => {
+      const accumulator = new GoogleJSONAccumulator();
+      accumulator.processPartialArgs([
+        {
+          jsonPath: '$.constructor.prototype.polluted',
+          stringValue: 'yes',
+        },
+      ]);
+
+      expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+
+      const final = accumulator.finalize();
+      expect(final).toMatchInlineSnapshot(`
+        {
+          "closingDelta": "{}",
+          "finalJSON": "{}",
+        }
+      `);
+    });
+
     it('should skip args with no resolvable value', () => {
       const accumulator = new GoogleJSONAccumulator();
       const result = accumulator.processPartialArgs([

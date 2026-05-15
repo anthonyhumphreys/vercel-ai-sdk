@@ -55,6 +55,7 @@ export class GoogleJSONAccumulator {
       if (!rawPath) continue;
 
       const segments = parsePath(rawPath);
+      if (segments.length === 0) continue;
 
       const existingValue = getNestedValue(this.accumulatedArgs, segments);
       const isStringContinuation =
@@ -265,15 +266,32 @@ function parsePath(rawPath: string): Array<string | number> {
   for (const part of rawPath.split('.')) {
     const bracketIdx = part.indexOf('[');
     if (bracketIdx === -1) {
+      if (isUnsafePathSegment(part)) {
+        return [];
+      }
       segments.push(part);
     } else {
-      if (bracketIdx > 0) segments.push(part.slice(0, bracketIdx));
+      if (bracketIdx > 0) {
+        const objectSegment = part.slice(0, bracketIdx);
+        if (isUnsafePathSegment(objectSegment)) {
+          return [];
+        }
+        segments.push(objectSegment);
+      }
       for (const m of part.matchAll(/\[(\d+)\]/g)) {
         segments.push(parseInt(m[1], 10));
       }
     }
   }
   return segments;
+}
+
+function isUnsafePathSegment(segment: string): boolean {
+  return (
+    segment === '__proto__' ||
+    segment === 'constructor' ||
+    segment === 'prototype'
+  );
 }
 
 /**
